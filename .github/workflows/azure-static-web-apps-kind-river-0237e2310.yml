@@ -36,11 +36,18 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      # Write environment variables to .env for Next.js build
+      - name: Set Environment Variables
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" >> .env
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}" >> .env
+
       # Build the app
       - name: Build Next.js App
         run: |
           npm run build
-          npm run export # only if using next export
+          # Uncomment the next line if using next export
+          # npm run export
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -55,7 +62,7 @@ jobs:
           action: "upload"
           app_location: "/"             # Root of your Next.js app
           api_location: ""              # Leave empty if no API
-          output_location: "out"        # Change to "build" if using custom Next.js build output
+          output_location: ".next"      # Default Next.js output folder
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
