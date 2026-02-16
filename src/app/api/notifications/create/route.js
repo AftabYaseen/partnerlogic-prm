@@ -1,26 +1,25 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-// Create Supabase admin client with service role key
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
-
 export async function POST(request) {
+  // Initialize Supabase inside the function
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  )
+
   try {
     const body = await request.json()
     const { notifications, notifyAccountUsers, dealId, dealName, dealValue } = body
 
     // Handle account user notifications for closed won deals
     if (notifyAccountUsers) {
-      // Get all active account users using admin client
       const { data: accountUsers, error: accountUsersError } = await supabaseAdmin
         .from('account_users')
         .select('auth_user_id, first_name, last_name, email')
@@ -68,7 +67,6 @@ export async function POST(request) {
       // Send emails to all account users
       try {
         console.log('📧 Sending invoice notification emails to account users...')
-        
         const emailPromises = accountUsers.map(async (user) => {
           try {
             const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-invoice-notification`, {
@@ -103,15 +101,13 @@ export async function POST(request) {
 
         const emailResults = await Promise.all(emailPromises)
         const successCount = emailResults.filter(r => r.success).length
-        
         console.log(`📧 Email sending complete: ${successCount}/${accountUsers.length} successful`)
       } catch (emailError) {
         console.error('Error sending notification emails:', emailError)
-        // Don't fail the request if emails fail, notifications were still created
       }
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         data,
         message: `Notified ${accountUsers.length} account users`
       })
@@ -125,7 +121,6 @@ export async function POST(request) {
       )
     }
 
-    // Validate each notification has required fields
     for (const notification of notifications) {
       if (!notification.user_id || !notification.title || !notification.message || !notification.type) {
         return NextResponse.json(
@@ -135,7 +130,6 @@ export async function POST(request) {
       }
     }
 
-    // Insert notifications using admin client (bypasses RLS)
     const { data, error } = await supabaseAdmin
       .from('notifications')
       .insert(notifications)
